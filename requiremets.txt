@@ -1,0 +1,5 @@
+Flask
+Flask-wtf
+Flask-Login
+Apscheduler
+opencv-python

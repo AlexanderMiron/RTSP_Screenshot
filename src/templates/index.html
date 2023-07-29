@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RTSP ScreenShoter</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .container {
+            max-width: 1500px;
+        }
+    </style>
+    <script>
+    function confirmDelete(name) {
+        if (confirm("Are you sure you want to delete this stream?")) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/delete_stream", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.send(JSON.stringify({
+                stream_name: name
+            }));
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                    window.location.href = "/";
+                }
+            };
+        }
+    }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>RTSP ScreenShoter</h1>
+
+        <table id="streamsTable" class="table">
+            <thead class="thead-light">
+                <tr>
+                    <th>Name</th>
+                    <th>URL</th>
+                    <th>Interval</th>
+                    <th>Screenshot count</th>
+                    <th>Screen info</th>
+                    <th>Operations</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stream in streams %}
+                <tr>
+                    <td>{{ stream.name }}</td>
+                    <td>{{ stream.url }}</td>
+                    <td>{{ stream.interval }}</td>
+                    <td>{{ stream.screenshots }}</td>
+                    <td>
+                        {{ stream.info.work|ternary("Work", "Not available") }}<br>
+                        Codec: {{ stream.info.codec }}<br>
+                        {{ stream.info.width }} X {{ stream.info.height }}<br>
+                        FPS: {{ stream.info.fps }}
+                    </td>
+                    <td>
+                        <a href="/save_image/{{ stream.name }}">
+                         <button type="submit" class="btn btn-secondary">Test save</button>
+                        </a>
+                        <a href="/edit_stream/{{ stream.name }}">
+                         <button type="submit" class="btn btn-secondary">Edit</button>
+                        </a>
+                        <button type="submit" class="btn btn-danger" onclick="confirmDelete('{{ stream.name }}')">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="alert alert-danger">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% endwith %}
+        <form id="addStreamForm" class="d-flex" method="post" action="{{ url_for('add_stream') }}">
+            {{ form.hidden_tag() }}
+            {{ form.name(class="form-control mr-2", placeholder="Stream Name") }}
+            {{ form.url(class="form-control", placeholder="Stream URL") }}
+            {{ form.interval(class="form-control", placeholder="Interval") }}
+            <button type="submit" class="btn btn-primary">Add Stream</button>
+        </form>
+    </div>
+</body>
+</html>
