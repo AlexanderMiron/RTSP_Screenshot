@@ -51,7 +51,12 @@
                     <td>{{ stream.name }}</td>
                     <td>{{ stream.url }}</td>
                     <td>{{ stream.interval }}</td>
-                    <td>{{ stream.screenshots }}</td>
+                    <td>
+                        <a href="{{ url_for('list_files', stream_name=stream.name) }}">
+                            <button class="btn btn-secondary">
+                            {{ stream.screenshots }}</td>
+                            </button>
+                        </a>
                     <td>
                         {{ stream.info.work|ternary("Work", "Not available") }}<br>
                         Codec: {{ stream.info.codec }}<br>
@@ -59,11 +64,11 @@
                         FPS: {{ stream.info.fps }}
                     </td>
                     <td>
-                        <a href="/save_image/{{ stream.name }}">
-                         <button type="submit" class="btn btn-secondary">Test save</button>
+                        <a href="/save_image/{{ stream.name }}" class="btn btn-secondary">
+                         Test save
                         </a>
-                        <a href="/edit_stream/{{ stream.name }}">
-                         <button type="submit" class="btn btn-secondary">Edit</button>
+                        <a href="/edit_stream/{{ stream.name }}" class="btn btn-secondary">
+                            Edit
                         </a>
                         <button type="submit" class="btn btn-danger" onclick="confirmDelete('{{ stream.name }}')">Delete</button>
                     </td>

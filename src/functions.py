@@ -1,8 +1,10 @@
-from config import RTSP_STREAMS, IMAGE_FOLDER
-import cv2
+import datetime
 import json
 import os
-import datetime
+
+import cv2
+
+from config import RTSP_STREAMS, IMAGE_FOLDER
 
 
 def add_scheduler_job(scheduler, stream):
@@ -23,6 +25,10 @@ def load_scheduler(scheduler):
 
 def job_print(text):
     print(text)
+
+
+def get_folder_by_stream_name(stream_name):
+    return os.path.join(IMAGE_FOLDER, get_stream(stream_name)['name'])
 
 
 def get_index_context():

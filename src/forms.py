@@ -1,9 +1,11 @@
+import os
+
 from flask_wtf import FlaskForm
 from wtforms import StringField, IntegerField, BooleanField, SelectField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, NumberRange, ValidationError, Regexp
-from functions import get_stream
+
 from config import RTSP_STREAMS
-import os
+from functions import get_stream
 
 
 def stream_name_check(form, field):

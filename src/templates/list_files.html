@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Files</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <style>
+        .file-thumbnail {
+            display: none;
+        }
+        .file-name:hover .file-thumbnail {
+            display: block;
+            position: absolute;
+            width: 80px;
+            height: auto;
+            top: -100px;
+            left: 0;
+            right: 0;
+            margin: 0 auto;
+        }
+    </style>
+    <script>
+        function clear_folder(){
+            if (confirm("Do you real want clear this folder ?")){
+            open("{{ url_for('clear_folder', stream_name=stream_name) }}", "_self");
+            };
+        }
+    </script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Files</h1>
+        <p class="mb-0">Archive Size: {{ folder_size|filesizeformat }}</p>
+        <a href="{{ url_for('index') }}" class="btn btn-primary mt-2">Main page</a>
+        <a href="{{ url_for('download_all', stream_name=stream_name) }}" class="btn btn-primary mt-2">Download All</a>
+        <button class="btn btn-danger mt-2" onclick="clear_folder()">Clear Folder</button>
+        <br>
+        <table class="table mt-3">
+            <thead>
+                <tr>
+                    <th>File</th>
+                    <th>Extension</th>
+                    <th>Date Created</th>
+                    <th>Size</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for file in files %}
+                {% set stat = file.stat() %}
+                    <tr>
+                        <td>
+                            <span class="file-name">
+                                <a href="{{ url_for('download_file', filename=file.name, stream_name=stream_name) }}" class="file-name">{{ file.name }}</a>
+                                <!--<img class="file-thumbnail" src="{{ url_for('thumbnail', filename=file.name, stream_name=stream_name) }}" alt="Thumbnail">-->
+                            </span>
+                        </td>
+                        <td>{{ file.name.split('.')[1].upper() }}</td>
+                        <td>{{ stat.st_ctime|format_timestamp }}</td>
+                        <td>{{ (stat.st_size / 1024 / 1024)|round(3, 'floor') }} MB</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
