@@ -154,6 +154,7 @@ def list_files(stream_name):
     for file in os.scandir(folder):
         folder_size += os.path.getsize(file)
     files = os.scandir(folder)
+    files = sorted(files, key=lambda e: e.name)
     return render_template('list_files.html', files=files, stream_name=stream_name, folder_size=folder_size)
 
 
