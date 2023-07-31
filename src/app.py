@@ -171,7 +171,11 @@ def download_all(stream_name):
     temp_zip_path = 'temp'
     os.makedirs(temp_zip_path, exist_ok=True)
     temp_zip_filename = os.path.join(temp_zip_path, zip_filename)
-    check_disk_space()
+    folder = get_folder_by_stream_name(stream_name)
+    folder_size = 0
+    for file in os.scandir(folder):
+        folder_size += os.path.getsize(file)
+    check_disk_space(temp_zip_path, required_space=((folder_size * 1024 ** 3) + 1))
 
     with zipfile.ZipFile(temp_zip_filename, 'w') as zipf:
         for file in os.listdir(image_folder):

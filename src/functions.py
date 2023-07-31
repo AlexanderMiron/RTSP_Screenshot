@@ -142,8 +142,8 @@ def get_free_disk_space(path):
     return shutil.disk_usage(path).free / 1024**3
 
 
-def check_disk_space(path=IMAGE_FOLDER):
-    if FREE_DISK_SPACE_GB > get_free_disk_space(path):
+def check_disk_space(path=IMAGE_FOLDER, required_space=FREE_DISK_SPACE_GB):
+    if required_space > get_free_disk_space(path):
         raise DiskSpaceError("Not enough disk space available.")
 
 
