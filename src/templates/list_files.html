@@ -57,7 +57,7 @@
                         </td>
                         <td>{{ file.name.split('.')[1].upper() }}</td>
                         <td>{{ stat.st_ctime|format_timestamp }}</td>
-                        <td>{{ (stat.st_size / 1024 / 1024)|round(3, 'floor') }} MB</td>
+                        <td>{{ (stat.st_size / 1024 ** 2)|round(3, 'floor') }} MB</td>
                     </tr>
                 {% endfor %}
             </tbody>

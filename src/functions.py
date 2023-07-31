@@ -1,10 +1,15 @@
 import datetime
 import json
 import os
+import shutil
 
 import cv2
 
-from config import RTSP_STREAMS, IMAGE_FOLDER
+from config import RTSP_STREAMS, IMAGE_FOLDER, FREE_DISK_SPACE_GB
+
+
+class DiskSpaceError(Exception):
+    pass
 
 
 def add_scheduler_job(scheduler, stream):
@@ -133,6 +138,15 @@ def get_flags(stream, extension):
     return flags
 
 
+def get_free_disk_space(path):
+    return shutil.disk_usage(path).free / 1024**3
+
+
+def check_disk_space(path=IMAGE_FOLDER):
+    if FREE_DISK_SPACE_GB > get_free_disk_space(path):
+        raise DiskSpaceError("Not enough disk space available.")
+
+
 def save_image_from_stream(stream):
     if not stream.get('save_images', True):
         return None
@@ -144,6 +158,7 @@ def save_image_from_stream(stream):
             return None
         elif not (start_time and end_time):
             raise ValueError('')
+    check_disk_space()
 
     save_folder = os.path.join(IMAGE_FOLDER, stream['name'])
     os.makedirs(save_folder, exist_ok=True)

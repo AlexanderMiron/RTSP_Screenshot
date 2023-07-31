@@ -16,7 +16,7 @@ from forms import AddStreamForm, EditStreamForm, LoginForm
 from functions import (get_stream, load_state, save_state,
                        get_index_context, save_image_from_stream,
                        load_scheduler, add_scheduler_job,
-                       get_folder_by_stream_name)
+                       get_folder_by_stream_name, check_disk_space)
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -171,6 +171,7 @@ def download_all(stream_name):
     temp_zip_path = 'temp'
     os.makedirs(temp_zip_path, exist_ok=True)
     temp_zip_filename = os.path.join(temp_zip_path, zip_filename)
+    check_disk_space()
 
     with zipfile.ZipFile(temp_zip_filename, 'w') as zipf:
         for file in os.listdir(image_folder):
