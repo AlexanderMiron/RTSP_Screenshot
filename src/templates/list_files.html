@@ -30,8 +30,8 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1>Files</h1>
-        <p class="mb-0">Archive Size: {{ folder_size|filesizeformat }}</p>
+        <h1>Screenshots</h1>
+        <p class="mb-0">Files Size: {{ folder_size|filesizeformat }}</p>
         <a href="{{ url_for('index') }}" class="btn btn-primary mt-2">Main page</a>
         <a href="{{ url_for('download_all', stream_name=stream_name) }}" class="btn btn-primary mt-2">Download All</a>
         <button class="btn btn-danger mt-2" onclick="clear_folder()">Clear Folder</button>

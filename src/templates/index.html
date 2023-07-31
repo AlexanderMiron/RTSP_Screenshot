@@ -40,7 +40,7 @@
                     <th>Name</th>
                     <th style="width: 34%;">URL</th>
                     <th>Interval</th>
-                    <th>Screenshot count</th>
+                    <th>Screenshots</th>
                     <th>Screen info</th>
                     <th>Save info</th>
                     <th>Operations</th>
@@ -51,8 +51,8 @@
                 <tr>
                     <td>{{ stream.name }}</td>
                     <td>{{ stream.url }}</td>
-                    <td>{{ stream.interval }}</td>
-                    <td>
+                    <td class="text-center">{{ stream.interval }}</td>
+                    <td class="text-center">
                         <a href="{{ url_for('list_files', stream_name=stream.name) }}">
                             <button class="btn btn-secondary">
                             {{ stream.screenshots }}
