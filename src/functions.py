@@ -134,7 +134,7 @@ def get_flags(stream, extension):
 
 
 def save_image_from_stream(stream):
-    if not stream.get('save_images'):
+    if not stream.get('save_images', True):
         return None
     if stream.get('use_save_time_interval'):
         start_time = stream.get('save_time_start')

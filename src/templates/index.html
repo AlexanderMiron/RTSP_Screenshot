@@ -38,10 +38,11 @@
             <thead class="thead-light">
                 <tr>
                     <th>Name</th>
-                    <th>URL</th>
+                    <th style="width: 34%;">URL</th>
                     <th>Interval</th>
                     <th>Screenshot count</th>
                     <th>Screen info</th>
+                    <th>Save info</th>
                     <th>Operations</th>
                 </tr>
             </thead>
@@ -62,6 +63,12 @@
                         Codec: {{ stream.info.codec }}<br>
                         {{ stream.info.width }} X {{ stream.info.height }}<br>
                         FPS: {{ stream.info.fps }}
+                    </td>
+                    <td>
+                        Save Image: {{ stream.get('save_images', True) }}<br>
+                        Save Time: {% if stream.use_save_time_interval %}{{ stream.save_time_start.strftime('%H:%M') }}-{{ stream.save_time_end.strftime('%H:%M') }}{% else %}All time{% endif %}<br>
+                        Extension: {{ stream.get('extension', '.jpg').split('.')[1]|upper }}<br>
+                        {% if stream.resize %}{{ stream.im_res_width }} X {{ stream.im_res_height }}{% else %}{{ stream.info.width }} X {{ stream.info.height }}{% endif%}
                     </td>
                     <td>
                         <a href="/save_image/{{ stream.name }}" class="btn btn-secondary">
