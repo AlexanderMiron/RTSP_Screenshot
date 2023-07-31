@@ -184,7 +184,6 @@ def download_all(stream_name):
 @login_required
 def thumbnail(stream_name, filename):
     file_path = os.path.join(get_folder_by_stream_name(stream_name), filename)
-    print(file_path)
     try:
         img_io = BytesIO()
         image = Image.open(file_path)

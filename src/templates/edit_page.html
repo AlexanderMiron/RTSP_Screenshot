@@ -12,7 +12,7 @@
         <form method="POST" action="{{ url_for('edit_stream', stream_name=stream.name) }}">
             {{ form.csrf_token }}
             <div class="form-group">
-                <label for="name">Name</label>
+                <label for="name">{{ form.name.label }}</label>
                 {{ form.name(class="form-control", placeholder="Stream Name") }}
                 {% for error in form.name.errors %}
                     <small class="text-danger">{{ error }}</small>
@@ -20,7 +20,7 @@
             </div>
 
             <div class="form-group">
-                <label for="url">URL</label>
+                <label for="url">{{ form.url.label }}</label>
                 {{ form.url(class="form-control", placeholder="Stream URL") }}
                 {% for error in form.url.errors %}
                     <small class="text-danger">{{ error }}</small>
@@ -28,7 +28,7 @@
             </div>
 
             <div class="form-group">
-                <label for="interval">Save interval</label>
+                <label for="interval">{{ form.interval.label }}</label>
                 {{ form.interval(class="form-control", placeholder="10, 20, 30 ... minutes") }}
                 {% for error in form.interval.errors %}
                     <small class="text-danger">{{ error }}</small>
@@ -37,11 +37,32 @@
 
             <div class="form-group form-check">
                 {{ form.save_images(class="form-check-input") }}
-                <label class="form-check-label" for="save_images">Save images</label>
+                <label class="form-check-label" for="save_images">{{ form.save_images.label }}</label>
+            </div>
+
+            <div class="form-group form-check">
+                {{ form.use_save_time_interval(class="form-check-input") }}
+                <label class="form-check-label" for="use_save_time_interval">{{ form.use_save_time_interval.label }}</label>
             </div>
 
             <div class="form-group">
-                <label for="extension">Extension</label>
+                <label for="extension">{{ form.save_time_start.label }}</label>
+                {{ form.save_time_start(class="form-control") }}
+                {% for error in form.save_time_start.errors %}
+                    <small class="text-danger">{{ error }}</small>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label for="extension">{{ form.save_time_end.label }}</label>
+                {{ form.save_time_end(class="form-control") }}
+                {% for error in form.save_time_end.errors %}
+                    <small class="text-danger">{{ error }}</small>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label for="extension">{{ form.extension.label }}</label>
                 {{ form.extension(class="form-control") }}
                 {% for error in form.extension.errors %}
                     <small class="text-danger">{{ error }}</small>
@@ -50,20 +71,19 @@
 
             <div class="form-group form-check">
                 {{ form.resize(class="form-check-input") }}
-                <label class="form-check-label" for="resizeCheck">Resize</label>
+                <label class="form-check-label" for="resizeCheck">{{ form.resize.label }}</label>
             </div>
-
             <div class="form-row">
                 <div class="col">
-                    <label for="im_res_width">Image Width</label>
-                    {{ form.im_res_width(class="form-control") }}
+                    <label for="im_res_width">{{ form.im_res_width.label }}</label>
+                    {{ form.im_res_width(class="form-control", placeholder="1920") }}
                     {% for error in form.im_res_width.errors %}
                         <small class="text-danger">{{ error }}</small>
                     {% endfor %}
                 </div>
                 <div class="col">
-                    <label for="im_res_height">Image Height</label>
-                    {{ form.im_res_height(class="form-control") }}
+                    <label for="im_res_height">{{ form.im_res_height.label }}</label>
+                    {{ form.im_res_height(class="form-control", placeholder="1080") }}
                     {% for error in form.im_res_height.errors %}
                         <small class="text-danger">{{ error }}</small>
                     {% endfor %}
@@ -72,11 +92,11 @@
             <br>
             <div class="form-group form-check">
                 {{ form.use_flags(class="form-check-input") }}
-                <label class="form-check-label" for="use_flags">Use flags</label>
+                <label class="form-check-label" for="use_flags">{{ form.use_flags.label }}</label>
             </div>
 
             <div class="form-group">
-                <label for="jpg_quality">JPG Quality</label>
+                <label for="jpg_quality">{{ form.jpg_quality.label }}</label>
                 {{ form.jpg_quality(class="form-control", placeholder="For JPEG, it can be a quality from 0 to 100 (the higher is the better). Default value is 95. ") }}
                 {% for error in form.jpg_quality.errors %}
                     <small class="text-danger">{{ error }}</small>
@@ -84,7 +104,7 @@
             </div>
 
             <div class="form-group">
-                <label for="jpg_optimize">JPG Optimize</label>
+                <label for="jpg_optimize">{{ form.jpg_optimize.label }}</label>
                 {{ form.jpg_optimize(class="form-control", placeholder="Enable JPEG features, 0 or 1, default is False.") }}
                 {% for error in form.jpg_optimize.errors %}
                     <small class="text-danger">{{ error }}</small>
@@ -92,7 +112,7 @@
             </div>
 
             <div class="form-group">
-                <label for="jp2_compression">JPEG 2000 Compression</label>
+                <label for="jp2_compression">{{ form.jp2_compression.label }}</label>
                 {{ form.jp2_compression(class="form-control", placeholder="For JPEG2000, use to specify the target compression rate (multiplied by 1000). The value can be from 0 to 1000. Default is 1000.") }}
                 {% for error in form.jp2_compression.errors %}
                     <small class="text-danger">{{ error }}</small>
@@ -100,7 +120,7 @@
             </div>
 
             <div class="form-group">
-                <label for="webp_quality">WEBP Quality</label>
+                <label for="webp_quality">{{ form.webp_quality.label }}</label>
                 {{ form.webp_quality(class="form-control", placeholder="For WEBP, it can be a quality from 1 to 100 (the higher is the better). By default (without any parameter) and for quality above 100 the lossless compression is used.") }}
                 {% for error in form.webp_quality.errors %}
                     <small class="text-danger">{{ error }}</small>
@@ -108,7 +128,7 @@
             </div>
 
             <div class="form-group">
-                <label for="png_compression">PNG Compression</label>
+                <label for="png_compression">{{ form.png_compression.label }}</label>
                 {{ form.png_compression(class="form-control", placeholder="For PNG, it can be the compression level from 0 to 9. A higher value means a smaller size and longer compression time. Default value is 1 (best speed setting).") }}
                 {% for error in form.png_compression.errors %}
                     <small class="text-danger">{{ error }}</small>

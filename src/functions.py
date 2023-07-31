@@ -23,10 +23,6 @@ def load_scheduler(scheduler):
             add_scheduler_job(scheduler, stream)
 
 
-def job_print(text):
-    print(text)
-
-
 def get_folder_by_stream_name(stream_name):
     return os.path.join(IMAGE_FOLDER, get_stream(stream_name)['name'])
 
@@ -50,20 +46,43 @@ def get_stream(stream_name):
     return None
 
 
+def load_with_datetime(pairs):
+    d = {}
+    converters = [
+        datetime.datetime.fromisoformat,
+        datetime.date.fromisoformat,
+        datetime.time.fromisoformat
+    ]
+    for k, v in pairs:
+        if isinstance(v, str):
+            for converter in converters:
+                try:
+                    d[k] = converter(v)
+                    break
+                except ValueError:
+                    pass
+            else:
+                d[k] = v
+        else:
+            d[k] = v
+    return d
+
+
 def save_state():
     for stream in RTSP_STREAMS:
         stream_folder = os.path.join(IMAGE_FOLDER, stream['name'])
         if not os.path.exists(stream_folder):
             os.makedirs(stream_folder)
     with open('state.json', 'w') as file:
-        json.dump(RTSP_STREAMS, file, indent=4, sort_keys=True)
+        json.dump(RTSP_STREAMS, file, indent=4, sort_keys=True,
+                  default=lambda obj: obj.isoformat() if hasattr(obj, 'isoformat') else obj)
 
 
 def load_state():
     try:
         with open('state.json', 'r') as file:
-            RTSP_STREAMS.extend(json.load(file))
-    except FileNotFoundError:
+            RTSP_STREAMS.extend(json.load(file, object_pairs_hook=load_with_datetime))
+    except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
         pass
 
 
@@ -87,43 +106,63 @@ def get_stream_info(stream_url):
     }
 
 
+def get_flags(stream, extension):
+    flags = []
+
+    if stream.get('use_flags'):
+        match extension:
+            case '.png':
+                if stream.get('png_compression'):
+                    flags.append(int(cv2.IMWRITE_PNG_COMPRESSION))
+                    flags.append(stream['png_compression'])
+            case '.webp':
+                if stream.get('webp_quality'):
+                    flags.append(int(cv2.IMWRITE_WEBP_QUALITY))
+                    flags.append(stream['webp_quality'])
+            case '.jp2':
+                if stream.get('jp2_compression'):
+                    flags.append(int(cv2.IMWRITE_JPEG2000_COMPRESSION_X1000))
+                    flags.append(stream['jp2_compression'])
+            case '.jpg':
+                if stream.get('jpg_quality'):
+                    flags.append(int(cv2.IMWRITE_JPEG_QUALITY))
+                    flags.append(stream['jpg_quality'])
+                if stream.get('jpg_optimize'):
+                    flags.append(int(cv2.IMWRITE_JPEG_OPTIMIZE))
+                    flags.append(stream['jpg_optimize'])
+    return flags
+
+
 def save_image_from_stream(stream):
-    if 'save_images' not in stream or stream['save_images']:
-        save_folder = os.path.join(IMAGE_FOLDER, stream['name'])
-        os.makedirs(save_folder, exist_ok=True)
-        current_datetime = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    if not stream.get('save_images'):
+        return None
+    if stream.get('use_save_time_interval'):
+        start_time = stream.get('save_time_start')
+        end_time = stream.get('save_time_end')
+        current_time = datetime.datetime.now().time()
+        if start_time and end_time and not start_time <= current_time <= end_time:
+            return None
+        elif not (start_time and end_time):
+            raise ValueError('')
 
-        cap = cv2.VideoCapture(stream['url'])
-        ret, frame = cap.read()
-        if not ret:
-            return False
+    save_folder = os.path.join(IMAGE_FOLDER, stream['name'])
+    os.makedirs(save_folder, exist_ok=True)
+    current_datetime = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-        if 'resize' in stream and stream['resize']:
-            if 'im_res_width' in stream and 'im_res_height' in stream:
-                frame = cv2.resize(frame, (stream['im_res_width'], stream['im_res_height']))
-        cap.release()
+    cap = cv2.VideoCapture(stream['url'])
+    ret, frame = cap.read()
+    if not ret:
+        return False
 
-        extension = stream['extension'] if 'extension' in stream else '.jpg'
-        flags = []
-        if 'use_flags' in stream and stream['use_flags']:
-            match stream['extension']:
+    if stream.get('resize'):
+        if isinstance(stream.get('im_res_width'), int) and isinstance(stream.get('im_res_height'), int):
+            frame = cv2.resize(frame, (stream.get('im_res_width'), stream.get('im_res_height')))
+    cap.release()
 
-                case '.png':
-                    flags.append(int(cv2.IMWRITE_PNG_COMPRESSION)) if 'png_compression' in stream else None
-                    flags.append(stream['png_compression']) if 'png_compression' in stream else None
-                case '.webp':
-                    flags.append(int(cv2.IMWRITE_WEBP_QUALITY)) if 'webp_quality' in stream else None
-                    flags.append(stream['webp_quality']) if 'webp_quality' in stream else None
-                case '.jp2':
-                    flags.append(int(cv2.IMWRITE_JPEG2000_COMPRESSION_X1000)) if 'jp2_compression' in stream else None
-                    flags.append(stream['jp2_compression']) if 'jp2_compression' in stream else None
-                case '.jpg':
-                    flags.append(int(cv2.IMWRITE_JPEG_QUALITY)) if 'jpg_quality' in stream else None
-                    flags.append(stream['jpg_quality']) if 'jpg_quality' in stream else None
-                    flags.append(int(cv2.IMWRITE_JPEG_OPTIMIZE)) if 'jpg_optimize' in stream else None
-                    flags.append(stream['jpg_optimize']) if 'jpg_optimize' in stream else None
+    extension = stream.get('extension', '.jpg')
+    flags = get_flags(stream, extension)
 
-        filename = f'{stream["name"]}_{current_datetime}{extension}'
-        save_path = os.path.join(save_folder, filename)
-        save_path = os.path.abspath(save_path)
-        return cv2.imwrite(save_path, frame, flags)
+    filename = f'{stream["name"]}_{current_datetime}{extension}'
+    save_path = os.path.abspath(os.path.join(save_folder, filename))
+
+    return cv2.imwrite(save_path, frame, flags)
