@@ -55,9 +55,10 @@
                     <td>
                         <a href="{{ url_for('list_files', stream_name=stream.name) }}">
                             <button class="btn btn-secondary">
-                            {{ stream.screenshots }}</td>
+                            {{ stream.screenshots }}
                             </button>
                         </a>
+                    </td>
                     <td>
                         {{ stream.info.work|ternary("Work", "Not available") }}<br>
                         Codec: {{ stream.info.codec }}<br>
