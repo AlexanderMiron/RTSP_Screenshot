@@ -6,12 +6,13 @@ import zipfile
 from io import BytesIO
 from logging.handlers import RotatingFileHandler
 
+import pytz
 from PIL import Image
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, render_template, request, redirect, abort, flash, send_from_directory, send_file, url_for
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
-from config import RTSP_STREAMS, SECRET_KEY, USERS
+from config import RTSP_STREAMS, SECRET_KEY, USERS, TIMEZONE
 from forms import AddStreamForm, EditStreamForm, LoginForm
 from functions import (get_stream, load_state, save_state,
                        get_index_context, save_image_from_stream,
@@ -46,8 +47,8 @@ def ternary(value, true_value, false_value):
 @app.template_filter('format_timestamp')
 def format_timestamp(value):
     try:
-        dt = datetime.datetime.fromtimestamp(value)
-        formatted = dt.strftime('%Y-%m-%d %H:%M:%S')  # Форматирование как в примере
+        dt = datetime.datetime.fromtimestamp(value).astimezone(pytz.timezone(TIMEZONE))
+        formatted = dt.strftime('%Y-%m-%d %H:%M:%S')
         return formatted
     except Exception as e:
         return value

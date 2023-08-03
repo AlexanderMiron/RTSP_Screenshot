@@ -1,6 +1,7 @@
 RTSP_STREAMS = []
 IMAGE_FOLDER = 'images'
 SECRET_KEY = 'your_secret_key'
+TIMEZONE = 'Europe/Moscow'
 
 USERS = {
     'admin': {

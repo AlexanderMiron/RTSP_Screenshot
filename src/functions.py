@@ -4,8 +4,9 @@ import os
 import shutil
 
 import cv2
+import pytz
 
-from config import RTSP_STREAMS, IMAGE_FOLDER, FREE_DISK_SPACE_GB
+from config import RTSP_STREAMS, IMAGE_FOLDER, FREE_DISK_SPACE_GB, TIMEZONE
 
 
 class DiskSpaceError(Exception):
@@ -148,13 +149,13 @@ def check_disk_space(path=IMAGE_FOLDER, required_space=FREE_DISK_SPACE_GB):
 
 
 def save_image_from_stream(stream):
+    current_datetime = datetime.datetime.now().astimezone(pytz.timezone(TIMEZONE))
     if not stream.get('save_images', True):
         return None
     if stream.get('use_save_time_interval'):
         start_time = stream.get('save_time_start')
         end_time = stream.get('save_time_end')
-        current_time = datetime.datetime.now().time()
-        if start_time and end_time and not start_time <= current_time <= end_time:
+        if start_time and end_time and not start_time <= current_datetime.time() <= end_time:
             return None
         elif not (start_time and end_time):
             raise ValueError('')
@@ -162,7 +163,6 @@ def save_image_from_stream(stream):
 
     save_folder = os.path.join(IMAGE_FOLDER, stream['name'])
     os.makedirs(save_folder, exist_ok=True)
-    current_datetime = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     cap = cv2.VideoCapture(stream['url'])
     ret, frame = cap.read()
@@ -177,7 +177,7 @@ def save_image_from_stream(stream):
     extension = stream.get('extension', '.jpg')
     flags = get_flags(stream, extension)
 
-    filename = f'{stream["name"]}_{current_datetime}{extension}'
+    filename = f'{stream["name"]}_{current_datetime.strftime("%Y-%m-%d_%H-%M-%S")}{extension}'
     save_path = os.path.abspath(os.path.join(save_folder, filename))
 
     return cv2.imwrite(save_path, frame, flags)
