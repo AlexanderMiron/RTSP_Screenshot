@@ -6,7 +6,7 @@ import shutil
 import cv2
 import pytz
 
-from config import RTSP_STREAMS, IMAGE_FOLDER, FREE_DISK_SPACE_GB, TIMEZONE
+from config import RTSP_STREAMS, IMAGE_FOLDER, FREE_DISK_SPACE_GB, TIMEZONE, TEMP_FOLDER
 
 
 class DiskSpaceError(Exception):
@@ -92,6 +92,19 @@ def load_state():
         pass
 
 
+def delete_archive(stream_name):
+    file_path = os.path.join(TEMP_FOLDER, f'{stream_name}.zip')
+    if os.path.exists(file_path):
+        os.unlink(file_path)
+        return True
+    return False
+
+
+def delete_old_archives():
+    for file in os.listdir(TEMP_FOLDER):
+        os.unlink(os.path.join(TEMP_FOLDER, file))
+
+
 def get_stream_info(stream_url):
     cap = cv2.VideoCapture(stream_url)
 
@@ -145,7 +158,7 @@ def get_free_disk_space(path):
 
 def check_disk_space(path=IMAGE_FOLDER, required_space=FREE_DISK_SPACE_GB):
     if required_space > get_free_disk_space(path):
-        raise DiskSpaceError("Not enough disk space available.")
+        raise DiskSpaceError(f"Not enough disk space available. {required_space}GB required.")
 
 
 def save_image_from_stream(stream):

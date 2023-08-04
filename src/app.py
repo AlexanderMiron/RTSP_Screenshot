@@ -9,15 +9,17 @@ from logging.handlers import RotatingFileHandler
 import pytz
 from PIL import Image
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.jobstores.base import JobLookupError
 from flask import Flask, render_template, request, redirect, abort, flash, send_from_directory, send_file, url_for
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
-from config import RTSP_STREAMS, SECRET_KEY, USERS, TIMEZONE
+from config import RTSP_STREAMS, SECRET_KEY, USERS, TIMEZONE, DELETE_ARCHIVES_DELAY
 from forms import AddStreamForm, EditStreamForm, LoginForm
 from functions import (get_stream, load_state, save_state,
                        get_index_context, save_image_from_stream,
                        load_scheduler, add_scheduler_job,
-                       get_folder_by_stream_name, check_disk_space)
+                       get_folder_by_stream_name, check_disk_space,
+                       delete_archive, delete_old_archives)
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -168,6 +170,11 @@ def download_file(stream_name, filename):
 @app.route('/<stream_name>/download_all')
 @login_required
 def download_all(stream_name):
+    job_name = f'{stream_name}_delete_archive'
+    try:
+        scheduler.remove_job(job_name)
+    except JobLookupError:
+        pass
     zip_filename = f'{stream_name}.zip'
     image_folder = get_folder_by_stream_name(stream_name)
     temp_zip_path = 'temp'
@@ -177,13 +184,19 @@ def download_all(stream_name):
     folder_size = 0
     for file in os.scandir(folder):
         folder_size += os.path.getsize(file)
-    check_disk_space(temp_zip_path, required_space=((folder_size * 1024 ** 3) + 1))
+    check_disk_space(temp_zip_path, required_space=((folder_size / 1024 ** 3) + 1))
 
     with zipfile.ZipFile(temp_zip_filename, 'w') as zipf:
         for file in os.listdir(image_folder):
             file_path = os.path.join(image_folder, file)
             zipf.write(file_path, file)
-
+    scheduler.add_job(
+        delete_archive,
+        'date',
+        [stream_name],
+        run_date=(datetime.datetime.now()+datetime.timedelta(minutes=DELETE_ARCHIVES_DELAY)),
+        name=job_name
+    )
     return send_from_directory(temp_zip_path, zip_filename)
 
 
@@ -224,6 +237,7 @@ def create_app():
     handler.setFormatter(formatter)
     handler.setLevel(logging.INFO)
     app.logger.addHandler(handler)
+    delete_old_archives()
     load_state()
     load_scheduler(scheduler)
     return app
