@@ -35,7 +35,15 @@
         <a href="{{ url_for('index') }}" class="btn btn-primary mt-2">Main page</a>
         <a href="{{ url_for('download_all', stream_name=stream_name) }}" class="btn btn-primary mt-2">Download All</a>
         <button class="btn btn-danger mt-2" onclick="clear_folder()">Clear Folder</button>
-        <br>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
         <table class="table mt-3">
             <thead>
                 <tr>

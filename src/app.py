@@ -10,7 +10,8 @@ import pytz
 from PIL import Image
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.base import JobLookupError
-from flask import Flask, render_template, request, redirect, abort, flash, send_from_directory, send_file, url_for
+from flask import (Flask, render_template, request, redirect, abort,
+                   flash, send_from_directory, send_file, url_for, jsonify)
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
 from config import RTSP_STREAMS, SECRET_KEY, USERS, TIMEZONE, DELETE_ARCHIVES_DELAY
@@ -99,6 +100,7 @@ def add_stream():
         save_state()
         add_scheduler_job(scheduler, data)
         app.logger.info(f"Added new stream: {data['name']} (URL: {data['url']}, Interval: {data['interval']}s)")
+        flash(f'Stream {data["name"]} successfully added.', 'success')
         return redirect('/')
     return render_template('add_stream.html', form=form)
 
@@ -123,6 +125,7 @@ def edit_stream(stream_name):
             add_scheduler_job(scheduler, stream)
             app.logger.info(f"Edited stream: {stream_name}")
             save_state()
+            flash(f'Stream {stream_name} successfully update.', 'success')
             return redirect('/')
         return render_template('edit_page.html', stream=stream, form=form)
 
@@ -138,7 +141,8 @@ def delete_stream():
     RTSP_STREAMS.remove(stream)
     app.logger.info(f"Deleted stream: {stream_name}")
     save_state()
-    return redirect('/')
+    flash(f'Stream {stream_name} successfully delete.', 'success')
+    return jsonify(status=True)
 
 
 @app.route('/save_image/<stream_name>')
@@ -146,6 +150,10 @@ def delete_stream():
 def save_image_route(stream_name):
     stream = get_stream(stream_name)
     save_result = save_image_from_stream(stream)
+    if save_result:
+        flash(f'Image from {stream_name} successfully saved.', 'success')
+    else:
+        flash(f'Image from {stream_name} wasn\'t saved.', 'danger')
     return redirect('/')
 
 
@@ -228,6 +236,8 @@ def clear_folder(stream_name):
                 shutil.rmtree(file_path)
         except Exception as e:
             pass
+            # flash(f'Folder for {stream_name} wasn\'t cleared due to {e}.', 'success')
+    flash(f'Folder for {stream_name} successfully cleared.', 'success')
     return redirect(url_for('list_files', stream_name=stream_name))
 
 
