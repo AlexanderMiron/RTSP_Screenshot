@@ -63,6 +63,7 @@ def login():
         return redirect('/')
 
     form = LoginForm()
+    remote_ip = request.environ['REMOTE_ADDR']
     if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
@@ -70,8 +71,10 @@ def login():
         if user_data and user_data['password'] == password:
             user = User(username, password)
             login_user(user)
+            app.logger.info(f'Login successfully as {username}, remote ip {remote_ip}')
             return redirect('/')
         else:
+            app.logger.warning(f'Invalid username or password, username {username}, remote ip {remote_ip}')
             flash('Invalid username or password', 'danger')
     return render_template('login.html', form=form)
 
@@ -79,6 +82,7 @@ def login():
 @app.route('/logout')
 @login_required
 def logout():
+    app.logger.info(f'Logout successfully as {current_user.id}, remote ip {request.environ["REMOTE_ADDR"]}')
     logout_user()
     return redirect('/')
 
