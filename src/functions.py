@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import os
 import shutil
 
@@ -8,8 +9,14 @@ import pytz
 
 from config import RTSP_STREAMS, IMAGE_FOLDER, FREE_DISK_SPACE_GB, TIMEZONE, TEMP_FOLDER
 
+logger = logging.getLogger('app')
+
 
 class DiskSpaceError(Exception):
+    pass
+
+
+class VideoCaptureException(Exception):
     pass
 
 
@@ -89,7 +96,7 @@ def load_state():
         with open('state.json', 'r') as file:
             RTSP_STREAMS.extend(json.load(file, object_pairs_hook=load_with_datetime))
     except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
-        pass
+        logger.critical(f'Failed to read the thread settings file. The list is cleared. Error: {e}')
 
 
 def delete_archive(stream_name):
@@ -171,7 +178,7 @@ def save_image_from_stream(stream):
         if start_time and end_time and not start_time <= current_datetime.time() <= end_time:
             return None
         elif not (start_time and end_time):
-            raise ValueError('')
+            raise ValueError('Invalid values for save_time_start or save_time_end.')
     check_disk_space()
 
     save_folder = os.path.join(IMAGE_FOLDER, stream['name'])
@@ -180,11 +187,13 @@ def save_image_from_stream(stream):
     cap = cv2.VideoCapture(stream['url'])
     ret, frame = cap.read()
     if not ret:
-        return False
+        raise VideoCaptureException('Failed to capture frame from the video stream. The stream may not be available.')
 
     if stream.get('resize'):
         if isinstance(stream.get('im_res_width'), int) and isinstance(stream.get('im_res_height'), int):
-            frame = cv2.resize(frame, (stream.get('im_res_width'), stream.get('im_res_height')))
+            frame = cv2.resize(frame, (int(stream.get('im_res_width')), int(stream.get('im_res_height'))))
+        else:
+            logger.error('The resize function was specified but no parameters were specified.')
     cap.release()
 
     extension = stream.get('extension', '.jpg')

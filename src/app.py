@@ -20,7 +20,7 @@ from functions import (get_stream, load_state, save_state,
                        get_index_context, save_image_from_stream,
                        load_scheduler, add_scheduler_job,
                        get_folder_by_stream_name, check_disk_space,
-                       delete_archive, delete_old_archives)
+                       delete_archive, delete_old_archives, VideoCaptureException)
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -53,7 +53,7 @@ def format_timestamp(value):
         dt = datetime.datetime.fromtimestamp(value).astimezone(pytz.timezone(TIMEZONE))
         formatted = dt.strftime('%Y-%m-%d %H:%M:%S')
         return formatted
-    except Exception as e:
+    except (pytz.exceptions.AmbiguousTimeError, ValueError):
         return value
 
 
@@ -125,7 +125,10 @@ def edit_stream(stream_name):
             data = form.data
             data.pop('csrf_token')
             stream.update(data)
-            scheduler.remove_job(stream_name)
+            try:
+                scheduler.remove_job(stream_name)
+            except JobLookupError:
+                app.logger.warning(f'Failed to find job for {stream_name} while editing.')
             add_scheduler_job(scheduler, stream)
             app.logger.info(f"Edited stream: {stream_name}")
             save_state()
@@ -153,11 +156,16 @@ def delete_stream():
 @login_required
 def save_image_route(stream_name):
     stream = get_stream(stream_name)
-    save_result = save_image_from_stream(stream)
-    if save_result:
-        flash(f'Image from {stream_name} successfully saved.', 'success')
-    else:
-        flash(f'Image from {stream_name} wasn\'t saved.', 'danger')
+    try:
+        save_result = save_image_from_stream(stream)
+        if save_result:
+            flash(f'Image from {stream_name} successfully saved.', 'success')
+        else:
+            flash(f'Image from {stream_name} wasn\'t saved. '
+                  f'Because the stream has disabled saving '
+                  f'images or the set time for the stream has expired.', 'warning')
+    except (VideoCaptureException, ValueError) as e:
+        flash(str(e), 'danger')
     return redirect('/')
 
 
@@ -182,11 +190,14 @@ def download_file(stream_name, filename):
 @app.route('/<stream_name>/download_all')
 @login_required
 def download_all(stream_name):
+    app.logger.debug(f'The command to download the {stream_name} stream image archive has been launched.')
+
     job_name = f'{stream_name}_delete_archive'
     try:
         scheduler.remove_job(job_name)
     except JobLookupError:
         pass
+
     zip_filename = f'{stream_name}.zip'
     image_folder = get_folder_by_stream_name(stream_name)
     temp_zip_path = 'temp'
@@ -202,6 +213,7 @@ def download_all(stream_name):
         for file in os.listdir(image_folder):
             file_path = os.path.join(image_folder, file)
             zipf.write(file_path, file)
+    app.logger.debug(f'The archive for {stream_name} has been successfully created.')
     scheduler.add_job(
         delete_archive,
         'date',
@@ -230,6 +242,7 @@ def thumbnail(stream_name, filename):
 @app.route('/<stream_name>/clear_folder')
 @login_required
 def clear_folder(stream_name):
+    app.logger.debug(f'The command to delete the {stream_name} stream directory has been started.')
     folder = get_folder_by_stream_name(stream_name)
     for filename in os.listdir(folder):
         file_path = os.path.join(folder, filename)
@@ -237,10 +250,10 @@ def clear_folder(stream_name):
             if os.path.isfile(file_path) or os.path.islink(file_path):
                 os.unlink(file_path)
             elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        except Exception as e:
-            pass
-            # flash(f'Folder for {stream_name} wasn\'t cleared due to {e}.', 'success')
+                shutil.rmtree(file_path, ignore_errors=True)
+        except (OSError, IsADirectoryError, WindowsError) as e:
+            app.logger.warning(f'Folder for {stream_name} wasn\'t cleared due to {e}.')
+    app.logger.info(f'The command to delete the {stream_name} stream directory has been executed.')
     flash(f'Folder for {stream_name} successfully cleared.', 'success')
     return redirect(url_for('list_files', stream_name=stream_name))
 
@@ -254,6 +267,7 @@ def create_app():
     delete_old_archives()
     load_state()
     load_scheduler(scheduler)
+    app.logger.info('The app is running.')
     return app
 
 
