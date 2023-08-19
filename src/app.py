@@ -20,7 +20,8 @@ from functions import (get_stream, load_state, save_state,
                        get_index_context, save_image_from_stream,
                        load_scheduler, add_scheduler_job,
                        get_folder_by_stream_name, check_disk_space,
-                       delete_archive, delete_old_archives, VideoCaptureException)
+                       delete_archive, delete_old_archives, VideoCaptureException,
+                       check_stream_and_space_job)
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -71,10 +72,10 @@ def login():
         if user_data and user_data['password'] == password:
             user = User(username, password)
             login_user(user)
-            app.logger.info(f'Login successfully as {username}, remote ip {remote_ip}')
+            app.logger.info('Login successfully as {}, remote ip {}'.format(username, remote_ip))
             return redirect('/')
         else:
-            app.logger.warning(f'Invalid username or password, username {username}, remote ip {remote_ip}')
+            app.logger.warning('Invalid username or password, username {}, remote ip {}'.format(username, remote_ip))
             flash('Invalid username or password', 'danger')
     return render_template('login.html', form=form)
 
@@ -82,7 +83,7 @@ def login():
 @app.route('/logout')
 @login_required
 def logout():
-    app.logger.info(f'Logout successfully as {current_user.id}, remote ip {request.environ["REMOTE_ADDR"]}')
+    app.logger.info('Logout successfully as {}, remote ip {}'.format(current_user.id, request.environ["REMOTE_ADDR"]))
     logout_user()
     return redirect('/')
 
@@ -90,7 +91,14 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html', streams=get_index_context(), form=AddStreamForm())
+    space = shutil.disk_usage('.')
+    free_space = space.free
+    total_space = space.total
+    return render_template('index.html',
+                           streams=get_index_context(),
+                           form=AddStreamForm(),
+                           free_space=free_space,
+                           total_space=total_space)
 
 
 @app.route('/add_stream', methods=['POST'])
@@ -213,7 +221,7 @@ def download_all(stream_name):
         for file in os.listdir(image_folder):
             file_path = os.path.join(image_folder, file)
             zipf.write(file_path, file)
-    app.logger.debug(f'The archive for {stream_name} has been successfully created.')
+    app.logger.info(f'The archive for {stream_name} has been successfully created.')
     scheduler.add_job(
         delete_archive,
         'date',
@@ -253,7 +261,7 @@ def clear_folder(stream_name):
                 shutil.rmtree(file_path, ignore_errors=True)
         except (OSError, IsADirectoryError, WindowsError) as e:
             app.logger.warning(f'Folder for {stream_name} wasn\'t cleared due to {e}.')
-    app.logger.info(f'The command to delete the {stream_name} stream directory has been executed.')
+    app.logger.warning(f'The command to delete the {stream_name} stream directory has been executed.')
     flash(f'Folder for {stream_name} successfully cleared.', 'success')
     return redirect(url_for('list_files', stream_name=stream_name))
 
@@ -263,11 +271,13 @@ def create_app():
     handler = RotatingFileHandler('app.log', maxBytes=1024 * 1024, backupCount=5)
     handler.setFormatter(formatter)
     handler.setLevel(logging.INFO)
+    logging.getLogger('apscheduler').addHandler(handler)
     app.logger.addHandler(handler)
     delete_old_archives()
     load_state()
+    scheduler.add_job(check_stream_and_space_job, 'interval', minutes=1, id='check')
     load_scheduler(scheduler)
-    app.logger.info('The app is running.')
+    app.logger.warning('The app is running.')
     return app
 
 

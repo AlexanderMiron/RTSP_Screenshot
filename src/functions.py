@@ -22,12 +22,29 @@ class VideoCaptureException(Exception):
 
 def add_scheduler_job(scheduler, stream):
     scheduler.add_job(
-        save_image_from_stream,
+        save_image_job,
         'interval',
         [stream],
         minutes=stream['interval'],
         id=stream['name']
     )
+
+
+def check_stream_and_space_job():
+    for stream in RTSP_STREAMS:
+        if not get_stream_info(stream['url'])['work']:
+            logger.error('The stream {} is not available.'.format(stream['name']))
+    try:
+        check_disk_space()
+    except DiskSpaceError:
+        logger.error('There is little space left on the device. Images cannot be saved.')
+
+
+def save_image_job(stream):
+    try:
+        save_image_from_stream(stream)
+    except (VideoCaptureException, DiskSpaceError) as e:
+        logger.error(e)
 
 
 def load_scheduler(scheduler):
@@ -96,7 +113,7 @@ def load_state():
         with open('state.json', 'r') as file:
             RTSP_STREAMS.extend(json.load(file, object_pairs_hook=load_with_datetime))
     except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
-        logger.critical(f'Failed to read the thread settings file. The list is cleared. Error: {e}')
+        logger.critical('Failed to read the thread settings file. The list is cleared. Error: {}'.format(e))
 
 
 def delete_archive(stream_name):
@@ -165,7 +182,7 @@ def get_free_disk_space(path):
 
 def check_disk_space(path=IMAGE_FOLDER, required_space=FREE_DISK_SPACE_GB):
     if required_space > get_free_disk_space(path):
-        raise DiskSpaceError(f"Not enough disk space available. {required_space}GB required.")
+        raise DiskSpaceError("Not enough disk space available. {} GB required.".format(required_space))
 
 
 def save_image_from_stream(stream):
@@ -178,7 +195,8 @@ def save_image_from_stream(stream):
         if start_time and end_time and not start_time <= current_datetime.time() <= end_time:
             return None
         elif not (start_time and end_time):
-            raise ValueError('Invalid values for save_time_start or save_time_end.')
+            raise ValueError('Invalid values for save_time_start or save_time_end.'
+                             ' Stream: {}'.format(stream['name']))
     check_disk_space()
 
     save_folder = os.path.join(IMAGE_FOLDER, stream['name'])
@@ -187,13 +205,15 @@ def save_image_from_stream(stream):
     cap = cv2.VideoCapture(stream['url'])
     ret, frame = cap.read()
     if not ret:
-        raise VideoCaptureException('Failed to capture frame from the video stream. The stream may not be available.')
+        raise VideoCaptureException('Failed to capture frame from the video stream. The stream'
+                                    ' may not be available. Stream: {}'.format(stream['name']))
 
     if stream.get('resize'):
         if isinstance(stream.get('im_res_width'), int) and isinstance(stream.get('im_res_height'), int):
             frame = cv2.resize(frame, (int(stream.get('im_res_width')), int(stream.get('im_res_height'))))
         else:
-            logger.error('The resize function was specified but no parameters were specified.')
+            logger.error('The resize function was specified but no parameters were specified.'
+                         ' Stream: {}'.format(stream['name']))
     cap.release()
 
     extension = stream.get('extension', '.jpg')
