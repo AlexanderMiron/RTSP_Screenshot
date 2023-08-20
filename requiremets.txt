@@ -4,3 +4,4 @@ Flask-Login
 Apscheduler
 opencv-python
 Pillow
+tg-log-handler

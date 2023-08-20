@@ -33,7 +33,7 @@ def add_scheduler_job(scheduler, stream):
 def check_stream_and_space_job():
     for stream in RTSP_STREAMS:
         if not get_stream_info(stream['url'])['work']:
-            logger.error('The stream {} is not available.'.format(stream['name']))
+            logger.error('The stream "{}" is not available.'.format(stream['name']))
     try:
         check_disk_space()
     except DiskSpaceError:
@@ -213,7 +213,7 @@ def save_image_from_stream(stream):
             frame = cv2.resize(frame, (int(stream.get('im_res_width')), int(stream.get('im_res_height'))))
         else:
             logger.error('The resize function was specified but no parameters were specified.'
-                         ' Stream: {}'.format(stream['name']))
+                         ' Stream: "{}"'.format(stream['name']))
     cap.release()
 
     extension = stream.get('extension', '.jpg')

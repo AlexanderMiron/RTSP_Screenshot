@@ -5,6 +5,7 @@ import shutil
 import zipfile
 from io import BytesIO
 from logging.handlers import RotatingFileHandler
+from tg_handler import TelegramLoggingHandler
 
 import pytz
 from PIL import Image
@@ -14,7 +15,7 @@ from flask import (Flask, render_template, request, redirect, abort,
                    flash, send_from_directory, send_file, url_for, jsonify)
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
-from config import RTSP_STREAMS, SECRET_KEY, USERS, TIMEZONE, DELETE_ARCHIVES_DELAY
+from config import *
 from forms import AddStreamForm, EditStreamForm, LoginForm
 from functions import (get_stream, load_state, save_state,
                        get_index_context, save_image_from_stream,
@@ -72,10 +73,11 @@ def login():
         if user_data and user_data['password'] == password:
             user = User(username, password)
             login_user(user)
-            app.logger.info('Login successfully as {}, remote ip {}'.format(username, remote_ip))
+            app.logger.info('Login successfully as "{}", remote ip "{}"'.format(username, remote_ip))
             return redirect('/')
         else:
-            app.logger.warning('Invalid username or password, username {}, remote ip {}'.format(username, remote_ip))
+            app.logger.warning('Invalid username or password, username "{}", '
+                               'remote ip "{}"'.format(username, remote_ip))
             flash('Invalid username or password', 'danger')
     return render_template('login.html', form=form)
 
@@ -83,7 +85,8 @@ def login():
 @app.route('/logout')
 @login_required
 def logout():
-    app.logger.info('Logout successfully as {}, remote ip {}'.format(current_user.id, request.environ["REMOTE_ADDR"]))
+    app.logger.info('Logout successfully as "{}", remote ip "{}"'.format(current_user.id,
+                                                                         request.environ["REMOTE_ADDR"]))
     logout_user()
     return redirect('/')
 
@@ -111,8 +114,8 @@ def add_stream():
         RTSP_STREAMS.append(data)
         save_state()
         add_scheduler_job(scheduler, data)
-        app.logger.info(f"Added new stream: {data['name']} (URL: {data['url']}, Interval: {data['interval']}s)")
-        flash(f'Stream {data["name"]} successfully added.', 'success')
+        app.logger.info(f'Added new stream: "{data["name"]}" (URL: {data["url"]}, Interval: {data["interval"]} min)')
+        flash(f'Stream "{data["name"]}" successfully added.', 'success')
         return redirect('/')
     return render_template('add_stream.html', form=form)
 
@@ -136,11 +139,11 @@ def edit_stream(stream_name):
             try:
                 scheduler.remove_job(stream_name)
             except JobLookupError:
-                app.logger.warning(f'Failed to find job for {stream_name} while editing.')
+                app.logger.warning(f'Failed to find job for "{stream_name}" while editing.')
             add_scheduler_job(scheduler, stream)
-            app.logger.info(f"Edited stream: {stream_name}")
+            app.logger.info(f'Edited stream: "{stream_name}"')
             save_state()
-            flash(f'Stream {stream_name} successfully update.', 'success')
+            flash(f'Stream "{stream_name}" successfully update.', 'success')
             return redirect('/')
         return render_template('edit_page.html', stream=stream, form=form)
 
@@ -154,9 +157,9 @@ def delete_stream():
         abort(404)
     scheduler.remove_job(stream_name)
     RTSP_STREAMS.remove(stream)
-    app.logger.info(f"Deleted stream: {stream_name}")
+    app.logger.info(f'Deleted stream: "{stream_name}"')
     save_state()
-    flash(f'Stream {stream_name} successfully delete.', 'success')
+    flash(f'Stream "{stream_name}" successfully delete.', 'success')
     return jsonify(status=True)
 
 
@@ -167,12 +170,17 @@ def save_image_route(stream_name):
     try:
         save_result = save_image_from_stream(stream)
         if save_result:
-            flash(f'Image from {stream_name} successfully saved.', 'success')
+            app.logger.debug(f'Image from "{stream_name}" successfully saved.')
+            flash(f'Image from "{stream_name}" successfully saved.', 'success')
         else:
-            flash(f'Image from {stream_name} wasn\'t saved. '
+            app.logger.error(f'Image from "{stream_name}" wasn\'t saved. '
+                             f'Because the stream has disabled saving '
+                             f'images or the set time for the stream has expired.')
+            flash(f'Image from "{stream_name}" wasn\'t saved. '
                   f'Because the stream has disabled saving '
                   f'images or the set time for the stream has expired.', 'warning')
     except (VideoCaptureException, ValueError) as e:
+        app.logger.error(e)
         flash(str(e), 'danger')
     return redirect('/')
 
@@ -198,7 +206,7 @@ def download_file(stream_name, filename):
 @app.route('/<stream_name>/download_all')
 @login_required
 def download_all(stream_name):
-    app.logger.debug(f'The command to download the {stream_name} stream image archive has been launched.')
+    app.logger.debug(f'The command to download the "{stream_name}" stream image archive has been launched.')
 
     job_name = f'{stream_name}_delete_archive'
     try:
@@ -221,7 +229,7 @@ def download_all(stream_name):
         for file in os.listdir(image_folder):
             file_path = os.path.join(image_folder, file)
             zipf.write(file_path, file)
-    app.logger.info(f'The archive for {stream_name} has been successfully created.')
+    app.logger.info(f'The archive for "{stream_name}" has been successfully created.')
     scheduler.add_job(
         delete_archive,
         'date',
@@ -250,7 +258,7 @@ def thumbnail(stream_name, filename):
 @app.route('/<stream_name>/clear_folder')
 @login_required
 def clear_folder(stream_name):
-    app.logger.debug(f'The command to delete the {stream_name} stream directory has been started.')
+    app.logger.debug(f'The command to delete the "{stream_name} "stream directory has been started.')
     folder = get_folder_by_stream_name(stream_name)
     for filename in os.listdir(folder):
         file_path = os.path.join(folder, filename)
@@ -260,9 +268,9 @@ def clear_folder(stream_name):
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path, ignore_errors=True)
         except (OSError, IsADirectoryError, WindowsError) as e:
-            app.logger.warning(f'Folder for {stream_name} wasn\'t cleared due to {e}.')
-    app.logger.warning(f'The command to delete the {stream_name} stream directory has been executed.')
-    flash(f'Folder for {stream_name} successfully cleared.', 'success')
+            app.logger.warning(f'Folder for "{stream_name}" wasn\'t cleared due to {e}.')
+    app.logger.warning(f'The command to delete the "{stream_name}" stream directory has been executed.')
+    flash(f'Folder for "{stream_name}" successfully cleared.', 'success')
     return redirect(url_for('list_files', stream_name=stream_name))
 
 
@@ -271,11 +279,19 @@ def create_app():
     handler = RotatingFileHandler('app.log', maxBytes=1024 * 1024, backupCount=5)
     handler.setFormatter(formatter)
     handler.setLevel(logging.INFO)
+    if USE_TELEGRAM_BOT:
+        tg_handler = TelegramLoggingHandler(TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_CHAT_ID)
+        tg_handler.setFormatter(formatter)
+        tg_handler.setLevel(logging.WARNING)
+        logging.getLogger('apscheduler').addHandler(tg_handler)
+        app.logger.addHandler(tg_handler)
+
     logging.getLogger('apscheduler').addHandler(handler)
     app.logger.addHandler(handler)
+
     delete_old_archives()
     load_state()
-    scheduler.add_job(check_stream_and_space_job, 'interval', minutes=1, id='check')
+    scheduler.add_job(check_stream_and_space_job, 'interval', minutes=5, id='check')
     load_scheduler(scheduler)
     app.logger.warning('The app is running.')
     return app
